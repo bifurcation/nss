@@ -249,10 +249,51 @@ TLSTXN_HandleClientHello(PRFileDesc* server_socket,
                          SECItem *client_hello,
                          SECItem *server_first_flight)
 {
-  // TODO Provision first flight to read buffer
-  // TODO ssl3_Something
-  // TODO Copy out of write buffer
-  return SECFailure;
+  SECStatus rv;
+
+  sslSocket *ss = (sslSocket *) server_socket->secret;
+  buffer_t *buffer = (buffer_t *) server_socket->lower->secret;
+
+  buffer_clear(buffer);
+
+  /* Copy the ClientHello into the read buffer */
+  if (client_hello->len > IO_BUFFER_SIZE) {
+    PORT_SetError(PR_INVALID_ARGUMENT_ERROR);
+    return SECFailure;
+  }
+
+  memcpy(buffer->r, client_hello->data, client_hello->len);
+  buffer->r_end = client_hello->len;
+
+
+  /* Trigger the server to process the ClientHello */
+  rv = ssl_BeginServerHandshake(ss);
+  if (rv != SECSuccess) {
+    return rv;
+  }
+
+  ssl_Get1stHandshakeLock(ss)
+  rv = ssl_Do1stHandshake(ss);
+  ssl_Release1stHandshakeLock(ss);
+
+  if (rv != SECSuccess) {
+    /*
+     * PR_WOULD_BLOCK_ERROR and PR_END_OF_FILE_ERROR just indicates the
+     * handshake ran out of records to process, which we expect, because we
+     * only gave it a ClientHello.
+     */
+    PRErrorCode err = PR_GetError();
+    if ((err != PR_WOULD_BLOCK_ERROR) &&
+        (err != PR_END_OF_FILE_ERROR)) {
+      return rv;
+    }
+  }
+
+  /* At this point, the buffer contains the server's first flight */
+  server_first_flight->len = buffer->w_start;
+  server_first_flight->data = PORT_Alloc(server_first_flight->len);
+  PORT_Memcpy(server_first_flight->data, buffer->w, server_first_flight->len);
+  return SECSuccess;
 }
 
 SECStatus
@@ -260,16 +301,64 @@ TLSTXN_HandleServerFirstFlight(PRFileDesc* client_socket,
                                SECItem *server_first_flight,
                                SECItem *client_second_flight)
 {
-  // TODO Provision first flight to read buffer
-  // TODO tls13_Something
-  // TODO Copy out of write buffer
-  return SECFailure;
+  SECStatus rv;
+
+  sslSocket *ss = (sslSocket *) client_socket->secret;
+  buffer_t *buffer = (buffer_t *) client_socket->lower->secret;
+
+  buffer_clear(buffer);
+
+  /* Copy the server's flight into the read buffer */
+  if (server_first_flight->len > IO_BUFFER_SIZE) {
+    PORT_SetError(PR_INVALID_ARGUMENT_ERROR);
+    return SECFailure;
+  }
+
+  memcpy(buffer->r, server_first_flight->data, server_first_flight->len);
+  buffer->r_end = server_first_flight->len;
+
+
+  /* Trigger the server to process the flight */
+  ssl_Get1stHandshakeLock(ss)
+  rv = ssl_Do1stHandshake(ss);
+  ssl_Release1stHandshakeLock(ss);
+
+  if (rv != SECSuccess) {
+    return rv;
+  }
+
+  /* At this point, the buffer contains the client's second flight */
+  client_second_flight->len = buffer->w_start;
+  client_second_flight->data = PORT_Alloc(client_second_flight->len);
+  PORT_Memcpy(client_second_flight->data, buffer->w, client_second_flight->len);
+  return SECSuccess;
 }
+
 SECStatus
 TLSTXN_HandleClientSecondFlight(PRFileDesc* server_socket,
                                 SECItem *client_second_flight)
 {
-  // TODO Provision first flight to read buffer
-  // TODO tls13_Something
-  return SECFailure;
+  SECStatus rv;
+
+  sslSocket *ss = (sslSocket *) server_socket->secret;
+  buffer_t *buffer = (buffer_t *) server_socket->lower->secret;
+
+  buffer_clear(buffer);
+
+  /* Copy the server's flight into the read buffer */
+  if (client_second_flight->len > IO_BUFFER_SIZE) {
+    PORT_SetError(PR_INVALID_ARGUMENT_ERROR);
+    return SECFailure;
+  }
+
+  memcpy(buffer->r, client_second_flight->data, client_second_flight->len);
+  buffer->r_end = client_second_flight->len;
+
+
+  /* Trigger the server to process the flight */
+  ssl_Get1stHandshakeLock(ss)
+  rv = ssl_Do1stHandshake(ss);
+  ssl_Release1stHandshakeLock(ss);
+
+  return rv;
 }
