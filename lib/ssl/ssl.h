@@ -1381,6 +1381,61 @@ SSL_IMPORT SECStatus SSL_AuthCertificateComplete(PRFileDesc *fd,
  */
 SSL_IMPORT void *SSL_GetExperimentalAPI(const char *name);
 
+/*
+** Create an SSL handler that can do transactional TLS, i.e., a file descriptor
+** for use with the TLSTXN APIs specified below.  Once this handle is created,
+** it can be configured with the usual methods for manipulating such descriptors.
+*/
+SSL_IMPORT PRFileDesc *TLSTXN_Create();
+
+/*
+** Obtain a ClientHello.  The ClientHello is serialized into newly allocated
+** memory referenced by the SECItem passed in, so the caller is responsible for
+** freeing it.
+*/
+SSL_IMPORT SECStatus TLSTXN_CreateClientHello(PRFileDesc* client_socket,
+                                              SECItem *client_hello);
+
+/*
+** Process a ClientHello and generate the server's first flight.  The server
+** flight is serialized into newly allocated memory referenced by the SECItem
+** passed in, so the caller is responsible for freeing it.
+*/
+SSL_IMPORT SECStatus TLSTXN_HandleClientHello(PRFileDesc* server_socket,
+                                              SECItem *client_hello,
+                                              SECItem *server_first_flight);
+
+/*
+** Process a server's first flight and generate the client's second flight.
+** The client flight is serialized into newly allocated memory referenced by
+** the SECItem passed in, so the caller is responsible for freeing it.
+*/
+SSL_IMPORT SECStatus TLSTXN_HandleServerFirstFlight(
+                                              PRFileDesc* client_socket,
+                                              SECItem *server_first_flight,
+                                              SECItem *client_second_flight);
+
+/*
+** Process a client's second flight.
+*/
+SSL_IMPORT SECStatus TLSTXN_HandleClientSecondFlight(
+                                              PRFileDesc* server_socket,
+                                              SECItem *client_second_flight);
+
+/*
+** Encapsulate a plaintext as an encrypted TLS record
+*/
+SSL_IMPORT SECStatus TLSTXN_Protect(PRFileDesc* socket,
+                                    SECItem *ciphertext,
+                                    SECItem *plaintext);
+
+/*
+** Decapsulate an encrypted TLS record
+*/
+SSL_IMPORT SECStatus TLSTXN_Unprotect(PRFileDesc* socket,
+                                      SECItem *plaintext,
+                                      SECItem *ciphertext);
+
 SEC_END_PROTOS
 
 #endif /* __ssl_h_ */

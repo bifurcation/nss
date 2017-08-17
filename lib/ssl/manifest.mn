@@ -49,6 +49,7 @@ CSRCS = \
         tls13con.c \
         tls13exthandle.c \
         tls13hkdf.c \
+        tls13txn.c \
         sslcert.c \
         sslgrp.c \
         $(NULL)

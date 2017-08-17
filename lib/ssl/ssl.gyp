@@ -42,6 +42,7 @@
         'tls13con.c',
         'tls13exthandle.c',
         'tls13hkdf.c',
+        'tls13txn.c',
       ],
       'conditions': [
         [ 'OS=="win"', {

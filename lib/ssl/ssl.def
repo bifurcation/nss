@@ -240,3 +240,15 @@ SSL_GetExperimentalAPI;
 ;+    local:
 ;+*;
 ;+};
+;+NSS_3.XX {    # NSS 3.xx release
+;+    global:
+TLSTXN_Create;
+TLSTXN_CreateClientHello;
+TLSTXN_HandleClientHello;
+TLSTXN_HandleServerFirstFlight;
+TLSTXN_HandleClientSecondFlight;
+TLSTXN_Protect;
+TLSTXN_Unprotect;
+;+    local:
+;+*;
+;+};
