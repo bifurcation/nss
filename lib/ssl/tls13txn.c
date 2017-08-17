@@ -28,32 +28,6 @@ static void buffer_clear(buffer_t *buffer) {
   buffer->w_start = 0;
 }
 
-/*
-
-TODO: Uncomment when used by TLSTXN functions
-
-static PRStatus buffer_write_to_read(PRFileDesc *f, void *buf, int32_t length) {
-  buffer_t *buffer = (buffer_t *) f->lower->secret;
-  if (buffer->r_end + length > IO_BUFFER_SIZE) {
-    return PR_END_OF_FILE_ERROR;
-  }
-
-  PORT_Memcpy(buffer->r + buffer->r_end, buf, length);
-  buffer->r_end += length;
-  return PR_SUCCESS;
-}
-
-static PRStatus buffer_read_all_written(PRFileDesc *f, void *buf, int32_t length_in, int32_t *length_out) {
-  buffer_t *buffer = (buffer_t *) f->lower->secret;
-  if (length_in < buffer->w_start) {
-    return PR_INSUFFICIENT_RESOURCES_ERROR;
-  }
-
-  PORT_Memcpy(buf, buffer->w, buffer->w_start);
-  return PR_SUCCESS;
-}
-*/
-
 static PRStatus buffer_close(PRFileDesc *f) {
   buffer_t *buffer = (buffer_t *) f->secret;
 
@@ -361,4 +335,53 @@ TLSTXN_HandleClientSecondFlight(PRFileDesc* server_socket,
   ssl_Release1stHandshakeLock(ss);
 
   return rv;
+}
+
+SECStatus
+TLSTXN_Protect(PRFileDesc* socket, SECItem *ciphertext, SECItem *plaintext)
+{
+  buffer_t *buffer = (buffer_t *) socket->lower->secret;
+  buffer_clear(buffer);
+
+  /* Trigger encryption with a send */
+  int32_t sent = PR_Send(socket, plaintext->data, plaintext->len, 0, PR_INTERVAL_NO_TIMEOUT);
+  if (sent < plaintext->len) {
+    return SECFailure;
+  }
+
+  /* Read the ciphertext out of the write buffer */
+  ciphertext->len = buffer->w_start;
+  ciphertext->data = PORT_Alloc(ciphertext->len);
+  PORT_Memcpy(ciphertext->data, buffer->w, ciphertext->len);
+
+  return SECSuccess;
+}
+
+SECStatus
+TLSTXN_Unprotect(PRFileDesc* socket, SECItem *plaintext, SECItem *ciphertext)
+{
+  /* Position the ciphertext in the read buffer */
+  buffer_t *buffer = (buffer_t *) socket->lower->secret;
+  buffer_clear(buffer);
+
+  if (ciphertext->len > IO_BUFFER_SIZE) {
+    PORT_SetError(PR_INVALID_ARGUMENT_ERROR);
+    return SECFailure;
+  }
+
+  memcpy(buffer->r, ciphertext->data, ciphertext->len);
+  buffer->r_end = ciphertext->len;
+
+
+  /* Trigger decryption with a recv */
+  plaintext->len = ciphertext->len;
+  plaintext->data = PORT_Alloc(plaintext->len);
+
+  int32_t read = PR_Recv(socket, plaintext->data, plaintext->len, 0, PR_INTERVAL_NO_TIMEOUT);
+  if (read < 0) {
+    return SECFailure;
+  }
+
+  plaintext->len = read;
+  return SECSuccess;
 }

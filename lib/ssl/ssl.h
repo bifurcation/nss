@@ -1400,8 +1400,6 @@ SSL_IMPORT SECStatus TLSTXN_CreateClientHello(PRFileDesc* client_socket,
 ** Process a ClientHello and generate the server's first flight.  The server
 ** flight is serialized into newly allocated memory referenced by the SECItem
 ** passed in, so the caller is responsible for freeing it.
-**
-** XXX: UNIMPLEMENTED
 */
 SSL_IMPORT SECStatus TLSTXN_HandleClientHello(PRFileDesc* server_socket,
                                               SECItem *client_hello,
@@ -1411,8 +1409,6 @@ SSL_IMPORT SECStatus TLSTXN_HandleClientHello(PRFileDesc* server_socket,
 ** Process a server's first flight and generate the client's second flight.
 ** The client flight is serialized into newly allocated memory referenced by
 ** the SECItem passed in, so the caller is responsible for freeing it.
-**
-** XXX: UNIMPLEMENTED
 */
 SSL_IMPORT SECStatus TLSTXN_HandleServerFirstFlight(
                                               PRFileDesc* client_socket,
@@ -1421,13 +1417,24 @@ SSL_IMPORT SECStatus TLSTXN_HandleServerFirstFlight(
 
 /*
 ** Process a client's second flight.
-**
-** XXX: UNIMPLEMENTED
 */
 SSL_IMPORT SECStatus TLSTXN_HandleClientSecondFlight(
                                               PRFileDesc* server_socket,
                                               SECItem *client_second_flight);
 
+/*
+** Encapsulate a plaintext as an encrypted TLS record
+*/
+SSL_IMPORT SECStatus TLSTXN_Protect(PRFileDesc* socket,
+                                    SECItem *ciphertext,
+                                    SECItem *plaintext);
+
+/*
+** Decapsulate an encrypted TLS record
+*/
+SSL_IMPORT SECStatus TLSTXN_Unprotect(PRFileDesc* socket,
+                                      SECItem *plaintext,
+                                      SECItem *ciphertext);
 
 SEC_END_PROTOS
 

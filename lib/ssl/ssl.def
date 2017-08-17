@@ -247,6 +247,8 @@ TLSTXN_CreateClientHello;
 TLSTXN_HandleClientHello;
 TLSTXN_HandleServerFirstFlight;
 TLSTXN_HandleClientSecondFlight;
+TLSTXN_Protect;
+TLSTXN_Unprotect;
 ;+    local:
 ;+*;
 ;+};
